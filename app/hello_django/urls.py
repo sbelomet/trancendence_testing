@@ -23,7 +23,7 @@ from upload.views import image_upload
 
 urlpatterns = [
 	path('polls/', include('polls.urls')),
-	path("", image_upload, name="upload"),
+	#path("", image_upload, name="upload"),
     path('admin/', admin.site.urls),
 ]
 
