@@ -1,3 +1,5 @@
 Django
-daphne
 psycopg2-binary
+daphne
+channels
+channels_redis
