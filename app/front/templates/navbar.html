@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        {% load static %}
+        <meta charset="utf-8"/>
+        <!-- JS TO FETCH USER <script src="{% static 'front/front_index.js' %}"></script> -->
+    </head>
+    <body>
+        <nav class="navbar bg-body-tertiary">
+            <div class="container-fluid">
+                <ul class="nav justify-content-start">
+                    <li class="nav-item">
+                    	<a class="nav-link active" aria-current="page" href="#">Active</a>
+                    </li>
+                    <li class="nav-item">
+                    	<a class="nav-link" href="#">Link</a>
+                    </li>
+                    <li class="nav-item">
+                    	<a class="nav-link" href="#">Link</a>
+                    </li>
+                    <li class="nav-item">
+                    	<a class="nav-link disabled" aria-disabled="true">Disabled</a>
+                    </li>
+                </ul>
+				<a class="navbar-brand" href="#"></a>
+					{{ user.username|default:"no_user" }}
+					<img src="{{ user.avatar|default:"/media/orstein_smough.webp" }}" alt="Dark souls" width="30" height="24" class="d-inline-block align-text-up">
+                </a>
+            </div>
+        </nav>
+    </body>
+</html>

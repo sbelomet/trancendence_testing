@@ -34,6 +34,7 @@ CSRF_TRUSTED_ORIGINS = ["http://localhost:2000"]
 
 INSTALLED_APPS = [
 	"daphne",
+	"front",
 	'ChitChat.apps.ChitchatConfig',
 	"chat",
     'django.contrib.admin',
@@ -137,6 +138,10 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STATICFILES_DIRS = [
+    ("node_modules", os.path.join(BASE_DIR, 'node_modules/')),
+]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

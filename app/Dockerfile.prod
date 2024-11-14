@@ -48,11 +48,24 @@ RUN mkdir $APP_HOME/staticfiles
 WORKDIR $APP_HOME
 
 # install dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends netcat
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends netcat && \
+    apt-get install -y curl
 COPY --from=builder /usr/src/app/wheels /wheels
 COPY --from=builder /usr/src/app/requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install --no-cache /wheels/*
+
+# setup env variables for nvm
+ENV NODE_VERSION 22.11.0
+ENV NVM_DIR $HOME/.nvm
+# download nvm
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+# install nvm, setup version to use and add path to env (PATH)
+RUN . "$NVM_DIR/nvm.sh" && nvm install ${NODE_VERSION}
+RUN . "$NVM_DIR/nvm.sh" && nvm use v${NODE_VERSION}
+RUN . "$NVM_DIR/nvm.sh" && nvm alias default v${NODE_VERSION}
+ENV PATH="$HOME/.nvm/versions/node/v${NODE_VERSION}/bin/:${PATH}"
 
 # copy entrypoint.prod.sh
 COPY ./entrypoint.prod.sh .
@@ -61,6 +74,9 @@ RUN chmod +x $APP_HOME/entrypoint.prod.sh
 
 # copy project
 COPY . $APP_HOME
+
+# install node_modules for javascript
+RUN npm install
 
 # chown all the files to the app user
 RUN chown -R app:app $APP_HOME

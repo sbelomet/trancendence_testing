@@ -1,0 +1,14 @@
+{
+	"name": "django",
+	"version": "1.0.0",
+	"main": "./app/front/static/front/front_index.js",
+	"scripts": {
+	  "test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "moi",
+	"license": "ISC",
+	"description": "GAGA GOOGOO GIGIGIGIGIGIGIG",
+	"dependencies": {
+	  "bootstrap": "^5.3.3"
+	}
+  }
