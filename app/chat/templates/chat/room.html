@@ -55,16 +55,14 @@
 			let objDiv = document.getElementById("chat-messages");
 			objDiv.scrollTop = objDiv.scrollHeight;
 		}
-		/* function fetchMessages() {
-		fetch(`/messages/${roomName}/`)
+
+		/* function fetchLastMessage() {
+		fetch(`/chat/messages/${roomName}/`)
 			.then(response => response.json())
 			.then(data => {
+				console.log(data.message.content);
 				const chatMessages = document.querySelector('#chat-messages');
-				chatMessages.innerHTML = '';
-				data.messages.forEach(message => {
-					chatMessages.innerHTML += ('<b>' + message.username + '</b>: ' + message.message + '<br>');
-				});
-				scrollToBottom();
+				chatMessages.innerHTML += ('<b>' + data.message.username + '</b>: ' + data.message.content + '<br>');
 			});
 		} */
 		
@@ -83,10 +81,16 @@
 
         chatSocket.onmessage = function(e) {
 			console.log('on,message');
-			//fetchMessages();
             const data = JSON.parse(e.data);
 			if (data.message) {
-				document.querySelector('#chat-messages').innerHTML += ('<b>' + data.username + '</b>: ' + data.message + '<br>');
+				//document.querySelector('#chat-messages').innerHTML += ('<b>' + data.username + '</b>: ' + data.message + '<br>');
+				const newBoldTag = document.createElement('b');
+				const newBrTag = document.createElement('br');
+				const selectElement = document.getElementById('chat-messages');
+				newBoldTag.innerText = data.username;
+				selectElement.appendChild(newBoldTag);
+				selectElement.innerText += ': ' + data.message;
+				selectElement.appendChild(newBrTag);
 			}
 
 			scrollToBottom();
@@ -112,6 +116,7 @@
 				'room': roomName
             }));
             messageInputDom.value = '';
+			//fetchLastMessage();
         };
 
 		// Initial load of messages
