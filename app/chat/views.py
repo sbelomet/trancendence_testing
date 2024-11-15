@@ -1,8 +1,13 @@
 from django.shortcuts import render
 from django.http import JsonResponse
+import logging
 
 from .models import Message
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# logger.info()
 
 def index(request):
 	return render(request, "chat/index.html")

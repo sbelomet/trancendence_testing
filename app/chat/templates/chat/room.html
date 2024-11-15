@@ -5,6 +5,37 @@
     <meta charset="utf-8"/>
     <title>Chat App</title>
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.2/css/bulma.min.css">
+	<style>
+		.message-container {
+			display: flex;
+			align-items: flex-start;
+			padding: 5px;
+		}
+	
+		.profile-pic {
+			width: 40px;
+			height: 40px;
+			border-radius: 50%;
+			margin-right: 10px;
+		}
+	
+		.message-content {
+			display: flex;
+			flex-direction: column;
+			flex: 1;
+			min-width: 0;
+		}
+	
+		.username {
+			font-weight: bold;
+			margin-bottom: 5px;
+		}
+	
+		.message-text {
+			white-space: pre-wrap;
+			word-wrap: break-word;
+		}
+	</style>
 </head>
 <body>
     <section class="section">
@@ -25,7 +56,17 @@
 
 				<div class="column is-6 is-offset-3">
 					<div class="box">
-						<div id="chat-messages" style="max-height: 300px; overflow-y: scroll;">{% for m in messages %}<b>{{ m.username }}</b>: {{ m.content }}<br>{% endfor %}</div>
+						<div id="chat-messages" style="max-height: 300px; overflow-y: scroll;">
+							{% for m in messages %}
+							<div class="message-container">
+								<img src="/media/pic.jpg" alt="Profile Picture" class="profile-pic">
+								<div class="message-content">
+									<b class="username">{{ m.username }}</b>
+									<div class="message-text">{{ m.content }}</div>
+								</div>
+							</div>
+							{% endfor %}
+						</div>
 					</div>
 
 					<div class="field">
@@ -56,6 +97,35 @@
 			objDiv.scrollTop = objDiv.scrollHeight;
 		}
 
+		function addMessage(data) {
+			const chatMessages = document.getElementById('chat-messages');
+
+            const messageContainer = document.createElement('div');
+            messageContainer.className = 'message-container';
+
+            const profilePic = document.createElement('img');
+            profilePic.src = '/media/pic.jpg';
+            profilePic.alt = 'Profile Picture';
+            profilePic.className = 'profile-pic';
+
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+
+            const username = document.createElement('b');
+            username.className = 'username';
+            username.innerText = data.username;
+
+            const messageText = document.createElement('div');
+            messageText.className = 'message-text';
+            messageText.innerText = data.message;
+
+            messageContent.appendChild(username);
+            messageContent.appendChild(messageText);
+            messageContainer.appendChild(profilePic);
+            messageContainer.appendChild(messageContent);
+            chatMessages.appendChild(messageContainer);
+		}
+
 		/* function fetchLastMessage() {
 		fetch(`/chat/messages/${roomName}/`)
 			.then(response => response.json())
@@ -83,17 +153,9 @@
 			console.log('on,message');
             const data = JSON.parse(e.data);
 			if (data.message) {
-				//document.querySelector('#chat-messages').innerHTML += ('<b>' + data.username + '</b>: ' + data.message + '<br>');
-				const newBoldTag = document.createElement('b');
-				const newBrTag = document.createElement('br');
-				const selectElement = document.getElementById('chat-messages');
-				newBoldTag.innerText = data.username;
-				selectElement.appendChild(newBoldTag);
-				selectElement.innerText += ': ' + data.message;
-				selectElement.appendChild(newBrTag);
+				addMessage(data);
+				scrollToBottom();
 			}
-
-			scrollToBottom();
         };
 
         chatSocket.onclose = function(e) {

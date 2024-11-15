@@ -143,6 +143,10 @@ STATICFILES_DIRS = [
     ("node_modules", os.path.join(BASE_DIR, 'node_modules/')),
 ]
 
+# Media files (Images, Videos, etc.)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / "mediafiles"
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
