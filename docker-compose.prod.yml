@@ -8,12 +8,13 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile.prod
-    command: daphne hello_django.asgi:application -b 0.0.0.0 -p 8000
+    command: bash -c "gunicorn hello_django.wsgi:application --bind 0.0.0.0:8000 & daphne hello_django.asgi:application -b 0.0.0.0 -p 9000"
     volumes:
       - static_volume:/home/app/web/staticfiles
       - media_volume:/home/app/web/mediafiles
     expose:
       - 8000
+      - 9000
     env_file:
       - ./.env.prod
     depends_on:

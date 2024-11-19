@@ -1,5 +1,6 @@
 from django.db import models
 
+from users.models import CustomUser
 
 class Message(models.Model):
 	username = models.CharField(max_length=255)

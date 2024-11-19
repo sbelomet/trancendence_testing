@@ -1,12 +1,8 @@
 services:
-  redis:
-    build: ./nginx
-    ports:
-      - 6380:6380
-    expose:
-      - 6380
   web:
-    build: ./app
+    build:
+      context: ./app
+      dockerfile: Dockerfile
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - ./app/:/usr/src/app/
@@ -16,7 +12,6 @@ services:
       - ./.env.dev
     depends_on:
       - db
-      - redis
   db:
     image: postgres:15
     volumes:
@@ -25,6 +20,6 @@ services:
       - POSTGRES_USER=hello_django
       - POSTGRES_PASSWORD=hello_django
       - POSTGRES_DB=hello_django_dev
-
+  
 volumes:
   postgres_data:

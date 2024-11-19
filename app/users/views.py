@@ -1,0 +1,135 @@
+# users/views.py
+
+from rest_framework import viewsets, permissions
+from django.contrib.auth import get_user_model
+from .models import Friendship
+from .serializers import UserSerializer, FriendshipSerializer, RegisterSerializer, UserPublicSerializer, UserLoginSerializer, CustomUserSerializer
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authtoken.models import Token
+from rest_framework.response import Response
+from rest_framework import generics
+from rest_framework.decorators import action
+from .permissions import IsFriend, IsOwnerOrAdmin
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.utils import timezone
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework import status
+
+
+User = get_user_model()
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    def get_serializer_class(self):
+        if self.action == 'list' or self.action == 'retrieve':
+            return UserPublicSerializer
+        else:
+            return UserSerializer
+    #voir les amis d'un ami
+    @action(detail=True, methods=['get'], permission_classes=[IsFriend])
+    def see_friends(self, request, pk=None):
+        user = self.get_object()
+        friends = user.friends.all()
+        serializer = UserPublicSerializer(friends, many=True, context={'request': request})
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def see_online(self, request, pk=None):
+        connected = User.objects.filter(is_online=True).exclude(id=request.user.id)
+        serializer = UserPublicSerializer(connected, many=True, context={'request': request})
+        return Response(serializer.data)
+
+class RegistrationView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = RegisterSerializer
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        token = RefreshToken.for_user(user)
+        data = serializer.data
+        data["tokens"] = {"refresh":str(token),
+                          "access": str(token.access_token)}
+        return Response(data, status= status.HTTP_201_CREATED)
+    
+class UserLoginView(generics.GenericAPIView):
+    permission_classes = (AllowAny,)
+    serializer_class = UserLoginSerializer
+    
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data
+        user.is_online = True
+        user.save()
+        serializer = UserSerializer(user)
+        token = RefreshToken.for_user(user)
+        data = serializer.data
+        data['tokens'] = {'refresh':str(token),
+                          'access': str(token.access_token)}
+        return Response(data, status = status.HTTP_200_OK)
+    
+class UserLogoutView(generics.GenericAPIView):
+    permission_classes = (IsAuthenticated,)
+    
+    def post(self, request):
+        try:
+            refresh_token = request.data["refresh"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            request.user.is_online = False
+            request.user.save(update_fields=['is_online'])
+            return Response(status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            return Response(status= status.HTTP_400_BAD_REQUEST)
+
+class FriendshipViewSet(viewsets.ModelViewSet):
+    queryset = Friendship.objects.all()
+    serializer_class = FriendshipSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(from_user=self.request.user)
+
+    @action(detail=True, methods=['put'], permission_classes=[IsOwnerOrAdmin])
+    def accept_friendship(self, request, pk=None):
+        friendship = self.get_object()
+        if friendship.is_confirmed:
+            return Response({"detail": "Vous êtes déjà amis avec cet utilisateur."}, status=status.HTTP_400_BAD_REQUEST)
+        friendship.is_confirmed = True
+        friendship.created_at = timezone.now()
+        friendship.save()
+        return Response({"detail": "Demande d'ami acceptée avec succès."}, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['put'], permission_classes=[IsOwnerOrAdmin])
+    def refuse_friendship(self, request, pk=None):
+        friendship = self.get_object()
+        if friendship.is_confirmed:
+            return Response({"detail": "Vous êtes déjà amis avec cet utilisateur."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "Demande d'ami a été refusée par l'utilisateur."}, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['put'], permission_classes=[IsOwnerOrAdmin])
+    def delete_friendship(self, request, pk=None):
+        friendship = self.get_object()
+        if not friendship.is_confirmed:
+            return Response({"detail": "Vous n'êtes pas ami avec cet utilisateur."}, status=status.HTTP_400_BAD_REQUEST)
+        friendship.is_confirmed = False
+        friendship.created_at = None
+        return Response({"detail": "Vous avez retiré cet utilisateur de votre liste d'ami."}, status=status.HTTP_200_OK)
+
+    def get_permissions(self):
+        if self.action == 'list':
+            permission_classes = [permissions.IsAuthenticated]
+        else:
+            permission_classes = [IsOwnerOrAdmin]
+        return [permission() for permission in permission_classes]
+
+""" class CustomAuthToken(ObtainAuthToken):
+    def post(self, request, *args, **kwargs):
+        response = super(CustomAuthToken, self).post(request, *args, **kwargs)
+        token = Token.objects.get(key=response.data['token'])
+        user = token.user
+        return Response({'token': token.key, 'user_id': user.pk, 'username': user.username}) """
+    

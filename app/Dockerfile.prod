@@ -3,7 +3,7 @@
 ###########
 
 # pull official base image
-FROM python:3.11.4-slim-buster as builder
+FROM python:3.11.4-slim-buster AS builder 
 
 # set work directory
 WORKDIR /usr/src/app
@@ -13,8 +13,7 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
 # install system dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc
+RUN apt-get update && apt-get install -y --no-install-recommends gcc
 
 # lint
 RUN pip install --upgrade pip
@@ -25,7 +24,6 @@ COPY . /usr/src/app/
 # install python dependencies
 COPY ./requirements.txt .
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requirements.txt
-
 
 #########
 # FINAL #
@@ -60,8 +58,10 @@ RUN pip install --no-cache /wheels/*
 # setup env variables for nvm
 ENV NODE_VERSION 22.11.0
 ENV NVM_DIR $HOME/.nvm
+
 # download nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+
 # install nvm, setup version to use and add path to env (PATH)
 RUN . "$NVM_DIR/nvm.sh" && nvm install ${NODE_VERSION}
 RUN . "$NVM_DIR/nvm.sh" && nvm use v${NODE_VERSION}

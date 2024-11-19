@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class ChitchatConfig(AppConfig):
+class UploadConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'ChitChat'
+    name = 'upload'

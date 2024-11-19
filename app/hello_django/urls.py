@@ -16,10 +16,28 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+from django.http import HttpResponse
+
+
 
 urlpatterns = [
-	path("chat/", include("chat.urls")),
-	path("", include("ChitChat.urls")),
-	path("front/", include("front.urls")),
+    path("chat/", include("chat.urls")),
+    path("front/", include("front.urls")),
+    # optional adding for upload
     path('admin/', admin.site.urls),
+	path('api/', include('users.urls')),
+	#path('api/', include('tournaments.urls')),
+	path('api/', include('upload.urls')),
+	path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
 ]
+
+if bool(settings.DEBUG):
+	urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+	
+#Gestion des médias (avatars etc)
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
