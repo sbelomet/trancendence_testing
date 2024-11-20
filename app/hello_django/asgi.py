@@ -9,22 +9,23 @@ https://docs.djangoproject.com/en/5.1/howto/deployment/asgi/
 
 import os
 
-from channels.auth import AuthMiddlewareStack
-from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.security.websocket import AllowedHostsOriginValidator
+from channels.routing import ProtocolTypeRouter, URLRouter # is used to route incoming connections based on their protocol type, like http or websocket.
+from channels.auth import AuthMiddlewareStack #This middleware provides authentication support for WebSocket connections, ensuring that connections have access to user information.
 from django.core.asgi import get_asgi_application
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hello_django.settings')
 django_asgi_app = get_asgi_application()
 
 import chat.routing
+import server_side_pong.routing
 
 application = ProtocolTypeRouter(
 	{
 		"http": django_asgi_app,
 		"websocket": AuthMiddlewareStack(
 			URLRouter(
-				chat.routing.websocket_urlpatterns
+				chat.routing.websocket_urlpatterns +
+				server_side_pong.routing.websocket_urlpatterns
 			)),
 	}
 )

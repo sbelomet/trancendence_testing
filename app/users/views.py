@@ -1,25 +1,31 @@
 # users/views.py
 
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
 from django.contrib.auth import get_user_model
+from .models import PlayerStatistics
 from .models import Friendship
-from .serializers import UserSerializer, FriendshipSerializer, RegisterSerializer, UserPublicSerializer, UserLoginSerializer, CustomUserSerializer
+from .serializers import UserSerializer, FriendshipSerializer, RegisterSerializer, UserPublicSerializer, UserDetailSerializer, UserLoginSerializer, PlayerStatisticsSerializer
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework import generics
 from rest_framework.decorators import action
-from .permissions import IsFriend, IsOwnerOrAdmin
+from .permissions import IsFriend, IsOwnerOrAdmin, IsFriendshipRecipientOrAdmin
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import status
+from rest_framework.views import APIView
 
-
+#select_related permet le lazy loading et récupère la requete SQL en une fois
+#plutot que d'itérer dans toute la DB et faire autant de requetes
+#Utilisé pour les relations de type ForeignKey et OneToOneField.
+#pour les relations  ManyToManyField et ForeignKey inversé il faut utiliser
+#prefetch_related qui va attacher chaque requete et renvoyer le resultat final en une fois
 User = get_user_model()
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
+    queryset = User.objects.prefetch_related('friends', 'match_history__gameplayer_set__player').all()
     def get_serializer_class(self):
         if self.action == 'list' or self.action == 'retrieve':
             return UserPublicSerializer
@@ -29,7 +35,7 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], permission_classes=[IsFriend])
     def see_friends(self, request, pk=None):
         user = self.get_object()
-        friends = user.friends.all()
+        friends = user.friends.prefetch_related('avatar').all()
         serializer = UserPublicSerializer(friends, many=True, context={'request': request})
         return Response(serializer.data)
     
@@ -55,7 +61,7 @@ class RegistrationView(generics.CreateAPIView):
         return Response(data, status= status.HTTP_201_CREATED)
     
 class UserLoginView(generics.GenericAPIView):
-    permission_classes = (AllowAny,)
+    permission_classes = [permissions.AllowAny]
     serializer_class = UserLoginSerializer
     
     def post(self, request):
@@ -72,11 +78,13 @@ class UserLoginView(generics.GenericAPIView):
         return Response(data, status = status.HTTP_200_OK)
     
 class UserLogoutView(generics.GenericAPIView):
-    permission_classes = (IsAuthenticated,)
+    permission_classes = [IsOwnerOrAdmin]
     
     def post(self, request):
         try:
             refresh_token = request.data["refresh"]
+            if refresh_token is None:
+                return Response({"detail": "Le token de rafraîchissement est manquant."}, status=status.HTTP_400_BAD_REQUEST)
             token = RefreshToken(refresh_token)
             token.blacklist()
             request.user.is_online = False
@@ -84,16 +92,20 @@ class UserLogoutView(generics.GenericAPIView):
             return Response(status=status.HTTP_205_RESET_CONTENT)
         except Exception as e:
             return Response(status= status.HTTP_400_BAD_REQUEST)
+        
+class PlayerStatisticsViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = PlayerStatistics.objects.all()
+    serializer_class = PlayerStatisticsSerializer
 
 class FriendshipViewSet(viewsets.ModelViewSet):
-    queryset = Friendship.objects.all()
+    queryset = Friendship.objects.select_related('from_user', 'to_user').all()
     serializer_class = FriendshipSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
         serializer.save(from_user=self.request.user)
 
-    @action(detail=True, methods=['put'], permission_classes=[IsOwnerOrAdmin])
+    @action(detail=True, methods=['put'], permission_classes=[IsFriendshipRecipientOrAdmin])
     def accept_friendship(self, request, pk=None):
         friendship = self.get_object()
         if friendship.is_confirmed:
@@ -103,11 +115,12 @@ class FriendshipViewSet(viewsets.ModelViewSet):
         friendship.save()
         return Response({"detail": "Demande d'ami acceptée avec succès."}, status=status.HTTP_200_OK)
     
-    @action(detail=True, methods=['put'], permission_classes=[IsOwnerOrAdmin])
+    @action(detail=True, methods=['put'], permission_classes=[IsFriendshipRecipientOrAdmin])
     def refuse_friendship(self, request, pk=None):
         friendship = self.get_object()
         if friendship.is_confirmed:
             return Response({"detail": "Vous êtes déjà amis avec cet utilisateur."}, status=status.HTTP_400_BAD_REQUEST)
+        friendship.delete()
         return Response({"detail": "Demande d'ami a été refusée par l'utilisateur."}, status=status.HTTP_200_OK)
     
     @action(detail=True, methods=['put'], permission_classes=[IsOwnerOrAdmin])
@@ -122,6 +135,8 @@ class FriendshipViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == 'list':
             permission_classes = [permissions.IsAuthenticated]
+        elif self.action in ['accept_friendship', 'refuse_friendship']:
+            permission_classes = [IsFriendshipRecipientOrAdmin]
         else:
             permission_classes = [IsOwnerOrAdmin]
         return [permission() for permission in permission_classes]

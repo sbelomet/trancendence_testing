@@ -2,6 +2,13 @@ Django
 daphne
 gunicorn
 psycopg2-binary
+channels
+channels_redis
+websockets
+jsonschema
+pytest
+pytest-asyncio
+django-environ #for env variables in settings
 python-dotenv
 Pillow
 djangorestframework
@@ -10,5 +17,3 @@ django-oauth-toolkit
 django-filter
 django-extensions
 django-cors-headers
-channels
-channels_redis

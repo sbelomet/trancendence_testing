@@ -1,25 +1,29 @@
 # users/serializers.py
 
 from rest_framework import serializers
-from .models import CustomUser, Friendship
+from .models import CustomUser, Friendship, PlayerStatistics
 from upload.models import Image
 from django.conf import settings
 from .permissions import IsFriend, IsOwnerOrAdmin
 from django.contrib.auth import authenticate
-
-# rest_framework (DRF) is a powerful toolkit for building Web APIs with Django.
-# An API (Application Programming Interface) allows communication between software applications.
-# A RESTful API follows the REST architectural style, using standard HTTP methods.
+from server_side_pong.serializers import GameSerializer
 
 #la classe Meta dans un serializer sert de validator, pour s'assurer
 #que le model est le bon est les données correspondent bien
 #et il converti les données en format JSON ou XML 
-class UserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+class UserBaseSerializer(serializers.ModelSerializer):
+    #password = serializers.CharField(write_only=True)
     is_online = serializers.BooleanField(read_only=True)
+    id = serializers.IntegerField(read_only=True)
+    
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'password', 'avatar', 'is_online']
+        fields = ['id','username', 'email', 'avatar', 'is_online']
+
+class UserSerializer(UserBaseSerializer):
+    password = serializers.CharField(write_only=True)
+    class Meta(UserBaseSerializer.Meta):
+        fields = UserBaseSerializer.Meta.fields + ['password']
     
     def create(self, validated_data):
         password = validated_data.pop('password')
@@ -36,14 +40,42 @@ class UserSerializer(serializers.ModelSerializer):
             instance.set_password(password)
         instance.save()
         return instance
-    
-class UserPublicSerializer(serializers.ModelSerializer):
+
+class UserPublicSerializer(UserBaseSerializer):
+    class Meta(UserBaseSerializer.Meta):
+        fields = ['username', 'avatar', 'is_online', 'match_history']
+        read_only_fields = fields
+
+class PlayerStatisticsSerializer(serializers.ModelSerializer):
+    matches_played = serializers.IntegerField(read_only=True)
+    matches_won = serializers.IntegerField(read_only=True)
+    total_points = serializers.IntegerField(read_only=True)
+    matches_won = serializers.IntegerField(read_only=True)
+    total_points = serializers.IntegerField(read_only=True)
+    win_rate = serializers.SerializerMethodField()
+    average_score = serializers.SerializerMethodField()
+
     class Meta:
-        model = CustomUser
-        fields = ['username', 'avatar', 'is_online']
+        model = PlayerStatistics
+        fields = ['matches_played', 'matches_won', 'total_points', 'win_rate', 'average_score']
+    
+    def get_win_rate(self, obj):
+        return obj.win_rate
+    
+    def get_average_score(self, obj):
+        return obj.average_score
+        
+class UserDetailSerializer(UserBaseSerializer):
+    friends = UserPublicSerializer(many=True)
+    stats = PlayerStatisticsSerializer(many=False)
+    match_history = GameSerializer(many=True)
+
+    class Meta:
+        fields = UserBaseSerializer.Meta.fields + ['friends', 'match_history', 'stats']
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    id = serializers.IntegerField(read_only=True)
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'email', 'password', 'avatar']
@@ -64,23 +96,29 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.set_password(password)  # Hash le mot de passe
         user.save()
         return user
-    
-class CustomUserSerializer(serializers.ModelSerializer):
-	class Meta:
-		model = CustomUser
-		fields =('id', 'username', 'email')
-    
+
+
 class UserLoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
     
     def validate(self, data):
-        user = authenticate(**data)
-        if user and user.is_active:
-            return user
-        raise serializers.ValidationError('Incorrect credentials!')
+        username = data.get('username')
+        password = data.get('password')
+        if username and password:
+            user = authenticate(username=username, password=password)
+            if user:
+                if not user.is_active:
+                    raise serializers.ValidationError('Utilisateur désactivé.')
+                return user
+            else:
+                raise serializers.ValidationError('Identifiants incorrects.')
+        else:
+            raise serializers.ValidationError('Veuillez fournir un nom d\'utilisateur et un mot de passe.')
+
 
 class FriendshipSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(read_only=True)
     from_user = serializers.PrimaryKeyRelatedField(read_only=True)
     to_user = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
 
@@ -91,6 +129,8 @@ class FriendshipSerializer(serializers.ModelSerializer):
     
     def validate_to_user(self, value):
         user = self.context['request'].user
+        if not user.is_authenticated:
+            raise serializers.ValidationError("Vous devez être authentifié pour envoyer une demande d'ami.")
         if value == user:
             raise serializers.ValidationError("Un utilisateur ne peut pas s'ajouter lui-même comme ami.")
         if Friendship.objects.filter(from_user=user, to_user=value).exists():

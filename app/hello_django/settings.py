@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 import os
+# import environ #JBIDAUX ALTERNATIVE
 from pathlib import Path
 from datetime import timedelta
 
@@ -40,6 +41,7 @@ INSTALLED_APPS = [
 	"daphne",
     'front',
 	"chat",
+	"server_side_pong",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -108,6 +110,31 @@ CHANNEL_LAYERS = {
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+
+#JBIDAUX ALTERNATIVE WITH DJANGO ENVIRON
+
+# Initialize django-environ
+# env = environ.Env(
+#     # Set default values and casting
+#     DEBUG=(bool, False)
+# )
+
+# # Reading .env file
+# environ.Env.read_env(BASE_DIR / '.env.prod')
+
+# Use environment variables in your settings
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "env("SQL_ENGINE", default="django.db.backends.sqlite3"),
+#         "NAME": env("SQL_DATABASE"),
+#         "USER": env("SQL_USER"),
+#         "PASSWORD": env("SQL_PASSWORD"),
+#         "HOST": env("SQL_HOST", default="localhost"),
+#         "PORT": env("SQL_PORT", default="5432"),
+#     }
+# }
+
+# DEBUG = env("DEBUG", default=False)
 
 DATABASES = {
     "default": {
@@ -236,13 +263,18 @@ MEDIA_ROOT = BASE_DIR / "mediafiles"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Media files (Images, Videos, etc.)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
 # Custom settings
 CSRF_TRUSTED_ORIGINS = ["http://localhost:2000"]
 
-# Adding CORS headers allows your resources to be accessed on other domains.
-#CORS_ALLOW_ALL_ORIGINS = True
-#CORS_ALLOWED_ORIGINS = ["http://localhost:2000"]
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}
+
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+)

@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.db.models import Count, Sum, Q
 
 #les modèles construisent les tables de la DB et
 #définit la structure des données (champs, types de données, contraintes) et les comportements associés
@@ -17,10 +18,37 @@ class CustomUser(AbstractUser):
         symmetrical=False,
         related_name='friends_of'
     )
+    match_history = models.ManyToManyField(
+        'server_side_pong.Game',
+        through='server_side_pong.GamePlayer',
+        related_name='played_in'
+    )
     is_online = models.BooleanField(default=False)
-
+    stats = models.OneToOneField('PlayerStatistics', on_delete=models.CASCADE, related_name='user', null=True, blank=True)
+    
     def __str__(self):
         return self.username
+
+#The @property decorator in Python allows you to define methods in a class that
+# can be accessed like attributes. This is particularly useful when you want to
+# compute a value dynamically based on other fields in the class without storing
+# it directly in the database.
+class PlayerStatistics(models.Model):
+    player = models.OneToOneField('CustomUser', on_delete=models.CASCADE, related_name='statistics')
+    matches_played = models.PositiveIntegerField(default=0)
+    matches_won = models.PositiveIntegerField(default=0)
+    total_points = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.player.username} Statistics"
+
+    @property
+    def win_rate(self):
+        return (self.matches_won / self.matches_played) * 100 if self.matches_played > 0 else 0
+
+    @property
+    def average_score(self):
+        return self.total_points / self.matches_played if self.matches_played > 0 else 0
 
 
 User = get_user_model()

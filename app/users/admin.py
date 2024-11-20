@@ -16,3 +16,6 @@ class CustomUserAdmin(UserAdmin):
 #enregistrement de modèles
 admin.site.register(CustomUser, CustomUserAdmin)
 admin.site.register(Friendship)
+
+#jbidaux : tu peux utiliser "@admin.register(CustomUser)" au dessus de ta class CustomUserAdmin
+#et enlever la ligne equivalente en dessous de enregistrement de modele pour plus de swag
